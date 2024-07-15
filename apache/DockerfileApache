@@ -1,0 +1,23 @@
+FROM ubuntu:khl-test
+  
+RUN apt update \
+    && apt install apache2 -y
+
+WORKDIR /etc/apache2/sites-available
+COPY --chown=root:root ${domain}.conf ${domain}.conf_proto
+
+#환경변수 치환
+RUN envsubst '${domain} ${internal_lb_address}'\
+    < /etc/apache2/sites-available/${domain}.conf_proto\
+    > /etc/apache2/sites-available/${domain}.conf
+
+WORKDIR /root
+RUN a2ensite ${domain}.conf\
+    && a2enmod proxy_http
+
+## root 계정의 비밀번호 설정은 docker-compose 에서!
+
+WORKDIR /root
+COPY --chown=root:root Apache2.sh .
+EXPOSE 22
+CMD ./Apache2.sh

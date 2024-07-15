@@ -1,0 +1,60 @@
+FROM ubuntu:khl-test
+
+RUN apt update \
+    && apt install openjdk-11-jdk -y
+     
+WORKDIR /usr/local/src
+RUN wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.90/bin/${tomcat_version}.tar.gz\
+    &&tar xvzf ${tomcat_version}.tar.gz\
+    &&mv ${tomcat_version} tomcat\
+    &&useradd -M tomcat && chown tomcat:tomcat -R tomcat/
+
+WORKDIR /etc/systemd/system
+COPY --chown=root:root tomcat.service .
+
+WORKDIR /tmp
+RUN wget https://downloads.mysql.com/archives/get/p/3/file/mysql-connector-j_${mysql_connector_version}-1ubuntu24.04_all.deb\
+    &&dpkg -i mysql-connector-j_${mysql_connector_version}-1ubuntu24.04_all.deb\
+    &&cp /usr/share/java/mysql-connector-j-${mysql_connector_version}.jar /usr/local/src/tomcat/lib\
+    &&chown tomcat:tomcat /usr/local/src/tomcat/lib/mysql-connector-j-${mysql_connector_version}.jar
+  
+## root 계정의 비밀번호 설정은 docker-compose 에서!
+
+WORKDIR /usr/local/src/tomcat/conf
+COPY --chown=root:root context.xml context_proto.xml
+COPY --chown=root:root server1.xml server_proto.xml
+
+#환경변수 치환
+RUN envsubst '${db_username} ${db_password} ${db_address}'\
+    < /usr/local/src/tomcat/conf/context_proto.xml\
+    > /usr/local/src/tomcat/conf/context.xml
+
+RUN envsubst '${was_address1} ${was_address2}'\
+    < /usr/local/src/tomcat/conf/server_proto.xml\
+    > /usr/local/src/tomcat/conf/server.xml
+
+RUN chmod 777 /usr/local/src/tomcat/conf/context.xml\
+    &&chmod 777 /usr/local/src/tomcat/conf/server.xml\
+    &&mkdir -p webapps/sample/WEB-INF
+
+WORKDIR /usr/local/src/tomcat/webapps/sample/WEB-INF
+COPY --chown=root:root web.xml .
+RUN chmod 777 /usr/local/src/tomcat/webapps/sample/WEB-INF/web.xml
+
+WORKDIR /usr/local/src/tomcat/webapps/sample
+COPY --chown=root:root index.jsp .
+COPY --chown=root:root mysql_data.jsp mysql_data_proto.jsp
+
+#환경변수 치환
+RUN envsubst '${db_username} ${db_password} ${db_address}'\
+    < /usr/local/src/tomcat/webapps/sample/mysql_data_proto.jsp\
+    > /usr/local/src/tomcat/webapps/sample/mysql_data.jsp
+
+RUN chmod 777 index.jsp\
+    &&chmod 777 mysql_data.jsp\
+    &&systemctl enable tomcat
+
+WORKDIR /root
+COPY --chown=root:root Tomcat.sh .
+EXPOSE 22
+CMD ./Tomcat.sh

@@ -1,0 +1,18 @@
+FROM ubuntu:khl-test
+
+RUN apt update \
+    && apt install mysql-server -y
+
+WORKDIR /etc/mysql
+COPY --chown=root:root my.cnf .
+
+WORKDIR /root
+COPY --chown=root:root DB.sh DB.sh_proto
+#환경변수 치환
+RUN envsubst '${username} ${password} ${db_username} ${db_password}'\
+    < /root/DB.sh_proto\
+    > /root/DB.sh
+
+#실행 권한 부여
+RUN chmod +x DB.sh
+EXPOSE 22

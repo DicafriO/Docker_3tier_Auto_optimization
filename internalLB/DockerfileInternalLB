@@ -1,0 +1,25 @@
+FROM ubuntu:khl-test
+
+RUN apt update \
+    && apt install nginx -y
+     
+WORKDIR /etc/nginx/sites-available
+COPY --chown=root:root default .
+
+#WORKDIR /etc/nginx
+#RUN mkdir ${domain}
+
+COPY --chown=root:root ${domain}.conf /etc/nginx/conf.d/${domain}.conf_proto
+
+#환경변수 치환
+RUN envsubst '${domain} ${was_address1} ${was_address2}'\
+    < /etc/nginx/conf.d/${domain}.conf_proto\
+    > /etc/nginx/conf.d/${domain}.conf
+  
+## root 계정의 비밀번호 설정은 docker-compose 에서!
+
+WORKDIR /root
+COPY --chown=root:root InternalLB.sh .
+EXPOSE 22
+
+CMD ./InternalLB.sh

@@ -1,0 +1,26 @@
+FROM ubuntu:khl-test
+
+# 비대화형 방식으로 수행하도록 설정
+ARG DEBIAN_FRONTEND=noninteractive
+
+#ENV TZ=Asia/Seoul
+  
+RUN apt update \
+    && apt install nginx -y
+
+COPY --chown=root:root default /etc/nginx/sites-available 
+COPY --chown=root:root ${domain}.conf /etc/nginx/conf.d/${domain}.conf_proto
+
+RUN mkdir /etc/nginx/${domain}
+
+#환경변수 치환
+RUN envsubst '${domain} ${web_address1} ${web_address2}'\
+    < /etc/nginx/conf.d/${domain}.conf_proto\
+    > /etc/nginx/conf.d/${domain}.conf
+  
+## root 계정의 비밀번호 설정은 docker-compose 에서!
+
+WORKDIR /root
+COPY --chown=root:root ExternalLB.sh .
+EXPOSE 22
+CMD ./ExternalLB.sh

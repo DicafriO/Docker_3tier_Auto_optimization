@@ -1,0 +1,97 @@
+version: '3'
+
+services:
+    apache1: &was
+        build:
+          context: ./apache
+          dockerfile: DockerfileApache
+        container_name: apache1
+        hostname: apache1 
+        privileged: true          
+        environment:
+            - TZ=Asia/Seoul                   
+        restart: always
+        stdin_open: true
+        ports:
+            - "2001:22"
+        cap_add:
+            - SYS_ADMIN
+        command: bash -c "echo ${username}:${password} | chpasswd && /sbin/init"
+             
+    apache2:
+        <<: *was
+        container_name: apache2
+        hostname: apache2        
+        ports: 
+            - "2002:22"
+    
+    tomcat1:
+        <<: *was
+        build:
+          context: ./tomcat
+          dockerfile: DockerfileTomcat1
+        container_name: tomcat1
+        hostname: tomcat1        
+        ports: 
+            - "3001:22"
+              
+    tomcat2:
+        <<: *was
+        build:
+          context: ./tomcat
+          dockerfile: DockerfileTomcat2
+        container_name: tomcat2 
+        hostname: tomcat2       
+        ports: 
+            - "3002:22"
+
+    # redis:
+    #     <<: *was
+    #     container_name: redis 
+    #     hostname: redis       
+    #     ports: 
+    #         - "6003:22"   
+
+    db1:
+        <<: *was
+        build:
+          context: ./db
+          dockerfile: DockerfileDB
+        container_name: db1 
+        hostname: db1
+        init: true       
+        ports: 
+            - "6001:22"
+            - "33306:3306"
+           # - "6379:6379"
+        command: /root/DB.sh
+    # db2:
+    #     <<: *was
+    #     container_name: db2  
+    #     hostname: db2      
+    #     ports: 
+    #         - "6002:22"
+    #         - "33307:3306"
+           ## - "36379:6379"
+
+    nginx1:
+        <<: *was
+        build:
+          context: ./externalLB
+          dockerfile: DockerfileExternalLB
+        container_name: nginx1 
+        hostname: nginx1      
+        ports: 
+            - "5001:22"
+            - "443:443"
+            - "80:80"
+
+    nginx2:
+        <<: *was
+        build:
+          context: ./internalLB
+          dockerfile: DockerfileInternalLB
+        container_name: nginx2
+        hostname: nginx2        
+        ports: 
+            - "5002:22"
